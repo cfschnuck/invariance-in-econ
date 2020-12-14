@@ -1,0 +1,230 @@
+import torch.optim as optim
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.autograd import Variable
+from torch.utils.data import TensorDataset, DataLoader
+from torchnet.meter import AverageValueMeter
+from tqdm import tqdm
+from abc import abstractmethod
+import shutil
+import os
+from os.path import dirname, realpath
+import logging, logging.handlers
+from datetime import datetime
+import pickle
+from .losses import *
+from .helper_functions import *
+
+
+class Trainer():
+    def __init__(self, m1, m2, target, ab_index, reconstruction_reg = 1e-3, disentangle_reg = -1e-2, update_ratio = 10, batch_size=132, lr=1e-3, dataset='NLSY', warm_start=False, path_pretrained=None):
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.batch_size = batch_size
+        self.m1 = m1.to(self.device)
+        self.m2 = m2.to(self.device)
+        self.target = target
+        self.ab_index = ab_index
+        # loss weight parameters
+        self.reconstruction_reg = reconstruction_reg
+        self.disentangle_reg = disentangle_reg
+        self.update_ratio = update_ratio
+        # losses
+        self.classification_loss = F.mse_loss
+        self.reconstruction_loss = F.mse_loss
+        self.disentangle_loss = disentangle_loss
+        self.accuracy = F.mse_loss
+        # training parameters
+        self.lr = lr
+        self.dataset = dataset
+        self.warm_start = warm_start
+        self.path_pretrained = path_pretrained
+        self.path_dataset = "Data/Preprocessed/" + self.dataset + "/"
+        self.load_data()
+        self.optimizer1 = optim.Adam(self.m1.parameters(), lr= self.lr)
+        self.optimizer2 = optim.Adam(self.m2.parameters(), lr= self.lr)
+        #logging info
+        self.time = datetime.now().strftime("%d-%m-%Y %H-%M-%S")
+        self.model_path = dirname(dirname(realpath(__file__))) + f"/Pretrained/{self.dataset}/{self.m1.__class__.__name__}/{self.time}/"
+        if not os.path.exists(self.model_path):
+            os.makedirs(self.model_path)
+        logging.basicConfig(filename=dirname(dirname(realpath(__file__))) + f"/Pretrained/{self.dataset}/{self.m1.__class__.__name__}/{self.time}/train.log", level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
+        if self.warm_start:
+            raise NotImplementedError
+
+    def load_data(self):
+        self.train_dataset = create_dataset(self.dataset, self.path_dataset, self.target, self.ab_index, "train")
+        self.test_dataset = create_dataset(self.dataset, self.path_dataset, self.target, self.ab_index, "test")
+        self.train_dataloader = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True)
+        self.test_dataloader = DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=True)
+
+    def save_checkpoint(self, state, is_best):
+        if not os.path.exists(self.model_path):
+            os.makedirs(self.model_path)
+        filename = self.model_path + 'checkpoint.pth.tar.gz'
+        torch.save(state, filename)
+        if is_best:
+            shutil.copyfile(filename, self.model_path + 'model_best.pth.tar.gz')
+
+    def load_checkpoint(self, path):
+        try:
+            self.state_checkpoint = torch.load(path + 'checkpoint.pth.tar.gz', map_location=self.device)
+            self.state_best_model = torch.load(path + 'model_best.pth.tar.gz', map_location=self.device)
+        except FileNotFoundError:
+            logging.warning("No pretrained model found. Training continues without pretrained weights.")
+        else:
+            self.m1.load_state_dict(self.state_checkpoint['m1_state_dict'])
+            self.m2.load_state_dict(self.state_checkpoint['m2_state_dict'])
+            self.optimizer1.load_state_dict(self.state_checkpoint['optimizer1_state_dict'])
+            self.optimizer2.load_state_dict(self.state_checkpoint['optimizer2_state_dict'])
+            self.best_m1 = copy.deepcopy(self.m1)
+            self.best_m2 = copy.deepcopy(self.m2)
+            self.best_m1.load_state_dict(self.state_best_model['m1_state_dict'])
+            self.best_m2.load_state_dict(self.state_best_model['m2_state_dict'])
+            self.model_params = self.state_best_model['params']
+    
+    @property
+    def model_params(self):
+        return {"lr" : self.lr, "batch_size": self.batch_size, "reconstruction_reg" : self.reconstruction_reg, "disentangle_reg" : self.disentangle_reg, "update_ratio" : self.update_ratio}
+
+    def _log_start(self):
+        logging.info(f"Model params: | reconstruction_reg: {self.reconstruction_reg} | disentangle_reg: {self.disentangle_reg}")
+
+    def _init_eval(self):
+        self.eval_dict = {"train accuracy" : [], "reconstruction loss" : [], "disentangle loss 1" : [], "disentangle loss 2" : [], "test accuracy" : []}
+
+    def _update_eval(self):
+        self.eval_dict["train accuracy"].append(self.acc_meter.mean)
+        self.eval_dict["reconstruction loss"].append(self.reconstruction_loss_meter.mean)
+        self.eval_dict["disentangle loss 1"].append(self.disentangle_loss1_meter.mean)
+        self.eval_dict["disentangle loss 2"].append(self.disentangle_loss2_meter.mean)
+        self.eval_dict["test accuracy"].append(self.acc_meter_val.mean)
+
+    def _save_eval(self):
+        if not os.path.exists(self.model_path):
+            os.makedirs(self.model_path)
+        filename = self.model_path + 'eval_dict'
+        torch.save(self.eval_dict, filename)
+
+    def train(self, n_epochs=5):
+        best_score = 0
+        self._log_start()
+        self._init_eval()
+        for epoch in tqdm(range(0, n_epochs), desc="Epoch: "):
+            self.acc_meter = AverageValueMeter()
+            self.reconstruction_loss_meter = AverageValueMeter()
+            self.classification_loss_meter = AverageValueMeter()
+            self.disentangle_loss1_meter = AverageValueMeter()
+            self.total_loss_meter = AverageValueMeter()
+            # train M1 
+            self.m1.train()
+            self.m2.eval()
+            self._freeze_weights_m1(unfreeze=True)
+            self._freeze_weights_m2(unfreeze=False)
+            e_epoch = []
+            for batch_id, (x, targets) in enumerate(self.train_dataloader):
+                self.x, self.targets = Variable(x).to(self.device), Variable(targets).to(self.device)
+                self.targets.requires_grad_(True)
+                self.m1.zero_grad()
+                pred, (e1, e2), x_reconstructed = self.m1(self.targets)
+                classification_loss = self.classification_loss(pred, self.targets)
+                reconstruction_loss = self.reconstruction_loss(self.x, x_reconstructed)
+                e1_reconstructed, e2_reconstructed = self.m2(e1, e2)
+                e1_random, e2_random = sample_from_latent(e1.size(), e2.size())
+                disentangle_loss1 = self.disentangle_loss(e1_random.to(self.device), e1_reconstructed, e2_random.to(self.device), e2_reconstructed)
+                # disentangle_loss1 = self.disentangle_loss(e1, e1_reconstructed, e2, e2_reconstructed)
+                total_loss = classification_loss + self.reconstruction_reg * reconstruction_loss + self.disentangle_reg * disentangle_loss1
+                total_loss.backward()
+                self.optimizer1.step()
+                self.acc_meter.add(self.accuracy(pred.detach(), self.targets.detach()))
+                self.total_loss_meter.add(total_loss.item())
+                self.reconstruction_loss_meter.add(reconstruction_loss.item())
+                self.classification_loss_meter.add(classification_loss.item())
+                self.disentangle_loss1_meter.add(disentangle_loss1.item())
+                e_epoch.append((e1.detach().clone(), e2.detach().clone()))
+            
+            # train M2
+            self.m2.train()
+            self.m1.eval()
+            self._freeze_weights_m1(unfreeze=False)
+            self._freeze_weights_m2(unfreeze=True)
+            for i in range(0, self.update_ratio):
+                self.disentangle_loss2_meter = AverageValueMeter()
+                for batch_id, (e1, e2) in enumerate(e_epoch):
+                    self.e1, self.e2 = Variable(e1).to(self.device), Variable(e2).to(self.device)
+                    self.e1.requires_grad_(True)
+                    self.e2.requires_grad_(True)
+                    self.m2.zero_grad()
+                    e1_reconstructed, e2_reconstructed = self.m2(self.e1, self.e2)
+                    disentangle_loss2 = self.disentangle_loss(self.e1, e1_reconstructed, self.e2, e2_reconstructed)
+                    disentangle_loss2.backward()
+                    self.optimizer2.step()
+                    self.disentangle_loss2_meter.add(disentangle_loss2.item())
+            self._log_epoch_full(epoch)
+            self.validate()
+            self._update_eval()
+            self._save_eval()
+            is_best = self.acc_meter_val.mean > best_score
+            best_score = max(self.acc_meter_val.mean, best_score)
+            self.save_checkpoint({
+                    'epoch': epoch + 1,
+                    'm1_state_dict': self.m1.state_dict(),
+                    'm2_state_dict': self.m2.state_dict(),
+                    'train acc': self.acc_meter.mean,
+                    'val acc': self.acc_meter_val.mean,
+                    'optimizer1_state_dict' : self.optimizer1.state_dict(),
+                    'optimizer2_state_dict' : self.optimizer2.state_dict(), 
+                    'total_loss' : total_loss,
+                    'params' : self.model_params
+                    }, is_best)
+
+    def validate(self):
+        self.m1.eval()
+        self.acc_meter_val = AverageValueMeter()
+        with torch.no_grad():
+            for x, targets in self.test_dataloader:
+                self.x, self.targets = Variable(x).to(self.device), Variable(targets).to(self.device)
+                pred, (e1, e2), x_reconstructed = self.m1(self.targets)
+                self.acc_meter_val.add(self.accuracy(pred, self.targets))
+            logging.info(f"Acc: {self.acc_meter_val.mean}")
+
+    def _log_epoch_full(self, epoch):
+        logging.info(f"Full model: Epoch: {epoch} | Total Loss: {self.total_loss_meter.mean} | Reconstruction Loss: {self.reconstruction_loss_meter.mean} | Clf Loss: {self.classification_loss_meter.mean} | Disentangle Loss 1: {self.disentangle_loss1_meter.mean} |Disentangle Loss 2: {self.disentangle_loss2_meter.mean} | Acc: {self.acc_meter.mean}")
+        
+    def _freeze_weights_m1(self, unfreeze):
+        for param in self.m1.parameters():
+            param.requires_grad = unfreeze
+
+    def _freeze_weights_m2(self, unfreeze):
+        for param in self.m2.parameters():
+            param.requires_grad = unfreeze
+
+    def predict(self):
+        self.pred_target = "Y" if self.target == "D" else "D"
+        self.pred_ab_index = "b" if self.ab_index == "a" else "a"
+        self.load_pred_data()
+        self.m1.eval()
+        with torch.no_grad():
+            self.pred, (self.pred_e1, self.pred_e2), _ = self.m1(self.pred_target)
+        self.pred_acc = self.accuracy(self.pred, self.pred_target)
+
+    def load_pred_data(self):
+        self.pred_X, self.pred_target = load_NLSY_dataset(self.path_dataset, self.pred_target, self.pred_ab_index, "train")
+        
+
+
+
+
+def create_dataset(dataset, path_dataset, target, ab_index, train):
+    if dataset == "NLSY":
+        X, target = load_NLSY_dataset(path_dataset, target, ab_index, train)
+        return TensorDataset(X, target)
+    else:
+        raise NotImplementedError
+
+def load_NLSY_dataset(path_dataset, target, ab_index, train):
+    X = torch.load(path_dataset + "X" + "_" + ab_index + "_" + train)
+    target = torch.load(path_dataset + target + "_" + ab_index + "_" + train)
+    return X, target
+
+
