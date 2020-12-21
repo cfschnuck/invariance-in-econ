@@ -7,16 +7,19 @@ class InvarPredictor(nn.Module):
         self.e1_dim = e1_dim
         
         self.fc = nn.Sequential(
-            nn.Linear(self.e1_dim, 6),
-            nn.Dropout(0.1),
+            nn.BatchNorm1d(self.e1_dim),
+            nn.Linear(self.e1_dim, 8),
+            nn.Dropout(0.3),
             nn.LeakyReLU(),
-            # nn.Linear(8, 16),
-            # nn.Dropout(0.3),
-            # nn.ReLU(),
+            nn.BatchNorm1d(8),
+            nn.Linear(8, 8),
+            nn.Dropout(0.3),
+            nn.LeakyReLU(),
             # nn.Linear(16, 8),
             # nn.Dropout(0.3),
             # nn.ReLU(),
-            nn.Linear(6, 1),
+            nn.BatchNorm1d(8), 
+            nn.Linear(8, 1),
         )
         
     def forward(self, x):

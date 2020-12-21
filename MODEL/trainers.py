@@ -18,7 +18,8 @@ from .helper_functions import *
 
 
 class Trainer():
-    def __init__(self, m1, m2, target, ab_index, reconstruction_reg = 1e-3, disentangle_reg = -1e-2, update_ratio = 10, batch_size=132, lr=1e-3, dataset='NLSY', warm_start=False, path_pretrained=None):
+    def __init__(self, m1, m2, target, ab_index, reconstruction_reg = 1e-4, disentangle_reg = 1e0
+    , update_ratio = 20, batch_size=132, lr=1e-4, dataset='NLSY', warm_start=False, path_pretrained=None):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.batch_size = batch_size
         self.m1 = m1.to(self.device)
@@ -53,8 +54,8 @@ class Trainer():
             raise NotImplementedError
 
     def load_data(self):
-        self.train_dataset = create_dataset(self.dataset, self.path_dataset, self.target, self.ab_index, "train")
-        self.test_dataset = create_dataset(self.dataset, self.path_dataset, self.target, self.ab_index, "test")
+        self.train_dataset = create_dataset(self.path_dataset, self.target, self.ab_index, "train")
+        self.test_dataset = create_dataset(self.path_dataset, self.target, self.ab_index, "test")
         self.train_dataloader = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True)
         self.test_dataloader = DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=True)
 
@@ -200,31 +201,28 @@ class Trainer():
             param.requires_grad = unfreeze
 
     def predict(self):
-        self.pred_target = "Y" if self.target == "D" else "D"
+        self.pred_target = self.target
         self.pred_ab_index = "b" if self.ab_index == "a" else "a"
-        self.load_pred_data()
+        self.pred_X = torch.load(self.path_dataset + "X" + "_" + self.pred_ab_index + "_" + "train")
+        self.pred_target = torch.load(self.path_dataset + self.pred_target + "_" + self.pred_ab_index + "_" + "train")
+        # self.load_pred_data()
         self.m1.eval()
         with torch.no_grad():
             self.pred, (self.pred_e1, self.pred_e2), _ = self.m1(self.pred_target)
         self.pred_acc = self.accuracy(self.pred, self.pred_target)
 
-    def load_pred_data(self):
-        self.pred_X, self.pred_target = load_NLSY_dataset(self.path_dataset, self.pred_target, self.pred_ab_index, "train")
+    #def load_pred_data(self):
+    #    self.pred_X, self.pred_target = load_NLSY_dataset(self.path_dataset, self.pred_target, self.pred_ab_index, "train")
         
 
 
 
 
-def create_dataset(dataset, path_dataset, target, ab_index, train):
-    if dataset == "NLSY":
-        X, target = load_NLSY_dataset(path_dataset, target, ab_index, train)
-        return TensorDataset(X, target)
-    else:
-        raise NotImplementedError
-
-def load_NLSY_dataset(path_dataset, target, ab_index, train):
+def create_dataset(path_dataset, target, ab_index, train):
     X = torch.load(path_dataset + "X" + "_" + ab_index + "_" + train)
     target = torch.load(path_dataset + target + "_" + ab_index + "_" + train)
-    return X, target
+    return TensorDataset(X, target)
+
+
 
 

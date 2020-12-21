@@ -9,9 +9,11 @@ class Disentangler(nn.Module):
         self.out_dim = out_dim
 
         self.fc = nn.Sequential(
-            nn.Linear(self.in_dim, self.out_dim),
-            # nn.LeakyRelu()
-            # nn.Linear(64, self.out_dim)
+            nn.BatchNorm1d(self.in_dim), 
+            nn.Linear(self.in_dim, 16),
+            nn.Dropout(p=0.3), 
+            nn.LeakyReLU(),
+            nn.Linear(16, self.out_dim),
             nn.Tanh(),
         )
 
