@@ -31,13 +31,13 @@ def main():
     #m1 = InvarSennM1(autoencoder, predictor)
     #m2 = InvarSennM2(disentangler1, disentangler2)
     # train ML model and predict
-    trainer_a_D = Trainer(InvarSennM1(LinearAutoencoder(IN_DIM, N_E1, N_E2, OUT_DIM), InvarPredictor(N_E1)), InvarSennM2(Disentangler(N_E1, N_E2), Disentangler(N_E2, N_E1)), target="D", ab_index="a", dataset="Simulation")
+    trainer_a_D = AdvTrainer(InvarSennM1(LinearAutoencoder(IN_DIM, N_E1, N_E2, OUT_DIM), InvarPredictor(N_E1)), InvarSennM2(Disentangler(N_E1, N_E2), Disentangler(N_E2, N_E1)), target="D", ab_index="a", dataset="Simulation")
     trainer_a_D.train(int(N_EPOCHS / 2))
-    trainer_a_Y = Trainer(InvarSennM1(LinearAutoencoder(IN_DIM, N_E1, N_E2, OUT_DIM), InvarPredictor(N_E1)), InvarSennM2(Disentangler(N_E1, N_E2), Disentangler(N_E2, N_E1)), target="Y", ab_index="a", dataset="Simulation")
+    trainer_a_Y = AdvTrainer(InvarSennM1(LinearAutoencoder(IN_DIM, N_E1, N_E2, OUT_DIM), InvarPredictor(N_E1)), InvarSennM2(Disentangler(N_E1, N_E2), Disentangler(N_E2, N_E1)), target="Y", ab_index="a", dataset="Simulation")
     trainer_a_Y.train(N_EPOCHS)
-    trainer_b_D = Trainer(InvarSennM1(LinearAutoencoder(IN_DIM, N_E1, N_E2, OUT_DIM), InvarPredictor(N_E1)), InvarSennM2(Disentangler(N_E1, N_E2), Disentangler(N_E2, N_E1)), target="D", ab_index="b", dataset="Simulation")
+    trainer_b_D = AdvTrainer(InvarSennM1(LinearAutoencoder(IN_DIM, N_E1, N_E2, OUT_DIM), InvarPredictor(N_E1)), InvarSennM2(Disentangler(N_E1, N_E2), Disentangler(N_E2, N_E1)), target="D", ab_index="b", dataset="Simulation")
     trainer_b_D.train(int(N_EPOCHS / 2))
-    trainer_b_Y = Trainer(InvarSennM1(LinearAutoencoder(IN_DIM, N_E1, N_E2, OUT_DIM), InvarPredictor(N_E1)), InvarSennM2(Disentangler(N_E1, N_E2), Disentangler(N_E2, N_E1)), target="Y", ab_index="b", dataset="Simulation")
+    trainer_b_Y = AdvTrainer(InvarSennM1(LinearAutoencoder(IN_DIM, N_E1, N_E2, OUT_DIM), InvarPredictor(N_E1)), InvarSennM2(Disentangler(N_E1, N_E2), Disentangler(N_E2, N_E1)), target="Y", ab_index="b", dataset="Simulation")
     trainer_b_Y.train(N_EPOCHS)
 
 
@@ -159,5 +159,6 @@ def main():
     print(statistics.mean(mlp21_D_a_rand_score))
     print(statistics.mean(mlp21_Y_b_rand_score))
     print(statistics.mean(mlp21_Y_a_rand_score))
+
 if __name__ == "__main__":
     main()

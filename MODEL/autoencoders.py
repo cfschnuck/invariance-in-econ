@@ -104,28 +104,30 @@ class LinearDecoder(nn.Module):
 
 
 # use VAE
+# x is input and c is noise
 class VAELinearAutoencoder(nn.Module):
     def __init__(self, in_dim, z_dim, x_dim):
-        super(LinearVAEConceptizer, self).__init__()
+        super(VAELinearAutoencoder, self).__init__()
         self.in_dim = in_dim
         self.z_dim = z_dim
         self.x_dim = x_dim
         self.encoder = VAELinearEncoder(self.in_dim, self.z_dim)
         self.decoder = VAELinearDecoder(self.z_dim + self.x_dim, self.in_dim)
     
-    def forward(self, x):
-        mean, log_var = self.encoder(x)
+    def forward(self, target, x):
+        mean, log_var = self.encoder(target)
         sample = self.sample(mean, log_var)
-        decoded = self.decoder(sample)
-        return mean, log_var, decoded.view_as(x)
+        # for training
+        decoded = self.decoder(torch.cat((sample, x), axis=-1))
+        return mean, log_var, decoded
         
-    def encode(self, x):
-        z = self.encoder(x)
+    def encode(self, target):
+        z = self.encoder(target)
         return z
     
-    def decode(self, z):
-        x = self.decoder(z)
-        return x
+    # def decode(self, z):
+    #     x = self.decoder(z)
+    #     return x
     
     def sample(self, mean, log_var):
         if self.training:
@@ -147,30 +149,30 @@ class VAELinearEncoder(nn.Module):
             nn.Dropout(p=0.3),
             nn.LeakyReLU(),
             nn.BatchNorm1d(16), 
-            nn.Linear(16, self.z_dim),
+            nn.Linear(16, 16),
             nn.Dropout(p=0.3), 
             nn.LeakyReLU(),
         )
         self.mean_layer = nn.Sequential(
-            nn.Linear(8, z_dim),
+            nn.Linear(16, z_dim),
             nn.Tanh()
         )  
-        self.log_var_layer = nn.Linear(8, z_dim)
+        self.log_var_layer = nn.Linear(16, z_dim)
 
-        def forward(self, x):
-            encoded = self.fc(x)
-            mean = self.mean_layer(encoded)
-            log_var = self.log_var_layer(encoded)
-            return mean, log_var
+    def forward(self, x):
+        encoded = self.fc(x)
+        mean = self.mean_layer(encoded)
+        log_var = self.log_var_layer(encoded)
+        return mean, log_var
 
 class VAELinearDecoder(nn.Module):
-    def __init__(self, z_dim, out_dim):
+    def __init__(self, zc_dim, out_dim):
         super(VAELinearDecoder, self).__init__()
-        self.z_dim = z_dim
+        self.zc_dim = zc_dim
         self.out_dim = out_dim
         self.fc = nn.Sequential(  
-            nn.BatchNorm1d(self.z_dim),
-            nn.Linear(self.z_dim, 16),
+            # nn.BatchNorm1d(self.zc_dim),
+            nn.Linear(self.zc_dim, 16, bias = False),
             nn.Dropout(0.1),
             nn.LeakyReLU(),
             nn.BatchNorm1d(16),
