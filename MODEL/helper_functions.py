@@ -7,13 +7,13 @@ def sample_from_latent(size_1, size_2):
     return u.sample(size_1), u.sample(size_2)
 
 def prior_loss_f(z_mean, z_log_var):
-    return torch.sum(1 + z_log_var - z_mean ** 2 - torch.exp(z_log_var))
+    return (-0.5) * torch.sum(1 + z_log_var - z_mean ** 2 - torch.exp(z_log_var))
 
 # from https://github.com/dcmoyer/invariance-tutorial/blob/master/src/kl_tools.py
 def kl_qzx_qz_loss_f(z_mean, z_log_var):
     z_sigma = torch.exp( 0.5 * z_log_var )
     z_dim = z_mean.size()[1]
-    all_pairs_GKL = all_pairs_gaussian_kl(z_mean, z_sigma, z_dim) - 0.5 * z_dim
+    all_pairs_GKL = all_pairs_gaussian_kl(z_mean, z_sigma, True) - 0.5 * z_dim
     return torch.mean(all_pairs_GKL)
     
 
@@ -21,8 +21,8 @@ def all_pairs_gaussian_kl(mu, sigma, add_third_term = False):
     sigma_sq = sigma ** 2 + 1e-8
     sigma_sq_inv = torch.reciprocal(sigma_sq)
     first_term = torch.matmul(sigma_sq, torch.transpose(sigma_sq_inv, 0, 1))
-    r = torch.matmul(mu ** 2, torch.transpose(sigma_sq_inv, 0, 1))
-    r2 = (mu ** 2) * sigma_sq_inv
+    r = torch.matmul(mu * mu, torch.transpose(sigma_sq_inv, 0, 1))
+    r2 = mu * mu * sigma_sq_inv
     r2 = torch.sum(r2, 1)
     second_term = 2 * torch.matmul(mu, torch.transpose(mu*sigma_sq_inv, 0, 1))
     second_term = r - second_term + torch.transpose(r2.unsqueeze(-1), 0, 1)

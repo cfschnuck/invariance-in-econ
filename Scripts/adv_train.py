@@ -13,7 +13,7 @@ from torch.nn.functional import mse_loss
 from MODEL.models import InvarSennM1, InvarSennM2
 from MODEL.autoencoders import LinearAutoencoder
 from MODEL.predictors import InvarPredictor
-from MODEL.trainers import Trainer
+from MODEL.trainers import AdvTrainer
 from MODEL.disentanglers import Disentangler
 
 N_E1 = 3

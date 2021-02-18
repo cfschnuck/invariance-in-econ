@@ -8,7 +8,7 @@ PATH = 'Data/Preprocessed/Simulation/'
 RANDOM_STATE = 12345
 N_F = int(4)
 N_X = int(5)
-N_SAMPLES = int(1e5)
+N_SAMPLES = int(1e4)
 
 # sample ground truth factors for D
 u = Uniform(0, 1) # for tanh activation function in encoder
@@ -20,6 +20,8 @@ d_f = f_factors[:,0]**2 - f_factors[:,1] + torch.log(f_factors[:,2] + 1)
 d_x = x_factors[:,0]**2 - 4 * x_factors[:,1] - x_factors[:,2] - x_factors[:,3]**2 + torch.log(x_factors[:,4] + 1)
 
 d = d_x + d_f
+d = (d - torch.mean(d)) / torch.std(d)
+d = 0.0 if d > 0 else 1.0
 
 y_x = 3 * x_factors[:,1] + (x_factors[:,2])**2 - torch.log(x_factors[:,0] + 5)
 

@@ -138,7 +138,7 @@ class AdvTrainer():
                 total_loss = classification_loss + self.reconstruction_reg * reconstruction_loss + self.disentangle_reg * disentangle_loss1
                 total_loss.backward()
                 self.optimizer1.step()
-                self.acc_meter.add(self.accuracy(pred.detach(), self.targets.detach()))
+                self.acc_meter.add(self.accuracy(pred.detach(), self.targets.detach()).cpu())
                 self.total_loss_meter.add(total_loss.item())
                 self.reconstruction_loss_meter.add(reconstruction_loss.item())
                 self.classification_loss_meter.add(classification_loss.item())
@@ -187,7 +187,7 @@ class AdvTrainer():
             for x, targets in self.test_dataloader:
                 self.x, self.targets = Variable(x).to(self.device), Variable(targets).to(self.device)
                 pred, (e1, e2), x_reconstructed = self.m1(self.targets)
-                self.acc_meter_val.add(self.accuracy(pred, self.targets))
+                self.acc_meter_val.add(self.accuracy(pred, self.targets).cpu())
             logging.info(f"Acc: {self.acc_meter_val.mean}")
 
     def _log_epoch_full(self, epoch):
@@ -224,8 +224,8 @@ def create_dataset(path_dataset, target, ab_index, train):
 
 
 class VAETrainer():
-    def __init__(self, model, target, ab_index, lambda_reg = 1e0, beta_reg = 1e-1
-    , batch_size=264, lr=1e-4, dataset="Simulation", warm_start=False, path_pretrained=None):
+    def __init__(self, model, target, ab_index, lambda_reg = 1e-1, beta_reg = 1e-1
+    , batch_size=264, lr=1e-4, dataset="Simulation", warm_start=False, path_pretrained=None, time=None):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.batch_size = batch_size
         self.model = model.to(self.device)
@@ -247,8 +247,8 @@ class VAETrainer():
         self.load_data()
         self.optimizer = optim.Adam(self.model.parameters(), lr= self.lr)
         #logging info
-        self.time = datetime.now().strftime("%d-%m-%Y %H-%M-%S")
-        self.model_path = dirname(dirname(realpath(__file__))) + f"/Pretrained/{self.dataset}/{self.model.__class__.__name__}/{self.time}/"
+        self.time = time
+        self.model_path = dirname(dirname(realpath(__file__))) + f"/Pretrained/{self.dataset}/{self.model.__class__.__name__}/{self.time}/{self.target}{self.ab_index}/" 
         if not os.path.exists(self.model_path):
             os.makedirs(self.model_path)
         logging.basicConfig(filename=dirname(dirname(realpath(__file__))) + f"/Pretrained/{self.dataset}/{self.model.__class__.__name__}/{self.time}/train.log", level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
@@ -287,7 +287,7 @@ class VAETrainer():
         return {"lr" : self.lr, "batch_size": self.batch_size, "lambda" : self.lambda_reg, "beta" : self.beta_reg}
 
     def _log_start(self):
-        logging.info(f"Model params: | lambda: {self.lambda_reg} | beta: {self.beta_reg}")
+        logging.info(f"Model params: | lambda: {self.lambda_reg} | beta: {self.beta_reg} | z dim: {self.model.autoencoder.z_dim}")
 
     def _init_eval(self):
         self.eval_dict = {"train reconstruction loss" : [], "train prior loss" : [], "train paired gkl loss" : [], "test reconstruction loss" : []}
@@ -352,7 +352,7 @@ class VAETrainer():
             for x, targets in self.test_dataloader:
                 self.x, self.targets = Variable(x).to(self.device), Variable(targets).to(self.device)
                 z_mean, z_log_var, targets_reconstructed = self.model(self.targets, self.x)
-                self.reconstruction_loss_meter_val.add(self.reconstruction_loss(targets_reconstructed, self.targets))
+                self.reconstruction_loss_meter_val.add(self.reconstruction_loss(targets_reconstructed, self.targets).detach().cpu())
             logging.info(f"Acc: {self.reconstruction_loss_meter_val.mean}")
 
     def _log_epoch_full(self, epoch):
@@ -364,10 +364,11 @@ class VAETrainer():
         self.pred_X = torch.load(self.path_dataset + "X" + "_" + self.pred_ab_index + "_" + "train")
         self.pred_X = torch.zeros_like(self.pred_X)
         self.pred_targets = torch.load(self.path_dataset + self.pred_target + "_" + self.pred_ab_index + "_" + "train")
+        self.pred_X, self.pred_targets = Variable(self.pred_X).to(self.device), Variable(self.pred_targets).to(self.device)
         # self.load_pred_data()
         self.model.eval()
         with torch.no_grad():
-            self.pred_mean, _, self.pred = self.model(self.pred_targets, self.pred_X)
+            self.pred_mean, _, _ = self.model(self.pred_targets, self.pred_X)
             # how do we handle x factors here?
         # self.pred_acc = self.accuracy(self.pred, self.pred_targets)
 
