@@ -21,7 +21,7 @@ N_E2 = 5
 N_EPOCHS = 400
 IN_DIM = 1
 OUT_DIM = 5
-DATASET = "Simulation"
+DATASET = "NLSY"
 
 def main():
     # autoencoder = LinearAutoencoder(19, N_E1, N_E2)
