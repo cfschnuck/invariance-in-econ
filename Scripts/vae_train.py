@@ -31,7 +31,7 @@ Z_DIM = args.zdim
 DATASET = args.dataset
 if DATASET == "Simulation":
     X_DIM = 5
-if DATASET == "NLSY":
+elif DATASET == "NLSY":
     X_DIM = 18
 else:
     raise NotImplementedError

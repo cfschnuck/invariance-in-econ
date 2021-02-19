@@ -1,0 +1,42 @@
+Sender: LSF System <lsfadmin@lo-s4-008>
+Subject: Job 14265856: <python ./Scripts/vae_train.py --epochsd 1 --epochsy 1 --lambdareg 0.1 --betareg 0.1 --zdim 2> in cluster <leonhard> Exited
+
+Job <python ./Scripts/vae_train.py --epochsd 1 --epochsy 1 --lambdareg 0.1 --betareg 0.1 --zdim 2> was submitted from host <lo-login-02> by user <cschnuck> in cluster <leonhard> at Fri Feb 19 09:21:53 2021
+Job was executed on host(s) <lo-s4-008>, in queue <gpu.4h>, as user <cschnuck> in cluster <leonhard> at Fri Feb 19 09:22:13 2021
+</cluster/home/cschnuck> was used as the home directory.
+</cluster/home/cschnuck/InvariancesInEcon/invariance-in-econ> was used as the working directory.
+Started at Fri Feb 19 09:22:13 2021
+Terminated at Fri Feb 19 09:22:19 2021
+Results reported at Fri Feb 19 09:22:19 2021
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+python ./Scripts/vae_train.py --epochsd 1 --epochsy 1 --lambdareg 0.1 --betareg 0.1 --zdim 2
+------------------------------------------------------------
+
+Exited with exit code 1.
+
+Resource usage summary:
+
+    CPU time :                                   1.89 sec.
+    Max Memory :                                 246 MB
+    Average Memory :                             1.00 MB
+    Total Requested Memory :                     8092.00 MB
+    Delta Memory :                               7846.00 MB
+    Max Swap :                                   -
+    Max Processes :                              1
+    Max Threads :                                1
+    Run time :                                   2 sec.
+    Turnaround time :                            26 sec.
+
+The output (if any) follows:
+
+Traceback (most recent call last):
+  File "./Scripts/vae_train.py", line 15, in <module>
+    from MODEL.trainers import VAETrainer
+  File "/cluster/home/cschnuck/InvariancesInEcon/invariance-in-econ/MODEL/trainers.py", line 397
+    if self.target = "D":
+                   ^
+SyntaxError: invalid syntax

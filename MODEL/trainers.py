@@ -5,6 +5,8 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from torch.utils.data import TensorDataset, DataLoader
 from torchnet.meter import AverageValueMeter
+from sklearn.decomposition import PCA
+from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from abc import abstractmethod
@@ -295,7 +297,7 @@ class VAETrainer():
     def _update_eval(self):
         self.eval_dict["train reconstruction loss"].append(self.reconstruction_loss_meter.mean * (1 + self.lambda_reg))
         self.eval_dict["train prior loss"].append(self.prior_loss_meter.mean * self.beta_reg)
-        self.eval_dict["train paired gkl loss"].append(self.kl_qzx_qz_loss_meter.mean * self.lambda_reg * 10)
+        self.eval_dict["train paired gkl loss"].append(self.kl_qzx_qz_loss_meter.mean * self.lambda_reg)
         self.eval_dict["test reconstruction loss"].append(self.reconstruction_loss_meter_val.mean)
 
     def _save_eval(self):
@@ -322,7 +324,7 @@ class VAETrainer():
                 reconstruction_loss = self.reconstruction_loss(targets_reconstructed, self.targets)
                 prior_loss = self.prior_loss(z_mean, z_log_var)
                 kl_qzx_qz_loss = self.kl_qzx_qz_loss(z_mean, z_log_var)
-                total_loss = (1 + self.lambda_reg) * reconstruction_loss + self.beta_reg * prior_loss + self.lambda_reg * 10 * kl_qzx_qz_loss # TODO
+                total_loss = (1 + self.lambda_reg) * reconstruction_loss + self.beta_reg * prior_loss + self.lambda_reg * kl_qzx_qz_loss # TODO
                 total_loss.backward()
                 self.optimizer.step()
                 self.reconstruction_loss_meter.add(reconstruction_loss.item())
@@ -370,6 +372,7 @@ class VAETrainer():
         with torch.no_grad():
             self.pred_mean, _, _ = self.model(self.pred_targets, self.pred_X)
         # self.pred_acc = self.accuracy(self.pred, self.pred_targets)
+        self.save_latent_var_img()
 
     def save_loss_img(self):
         x = range(len(self.eval_dict["train reconstruction loss"]))
@@ -388,6 +391,52 @@ class VAETrainer():
         handles, labels = ax.get_legend_handles_labels()
         ax.legend(handles, labels)
         plt.savefig(self.model_path + 'train_total_loss.png')
+
+    def save_latent_var_img(self):
+        if self.model.autoencoder.z_dim >= 2: # check if plot can be done in 2D
+            if self.target == "D":
+                pca = PCA(n_components=2)
+                # randomly plot 2000 test samples
+                _, ind = train_test_split(range(len(self.pred_mean)), test_size=2000)
+                latents = self.pred_mean[ind].cpu().numpy()
+                targets = self.pred_targets[ind].cpu().numpy().squeeze()
+                X = pca.fit(latents).transform(latents)
+                plt.figure()
+                for i in zip([0, 1]):
+                    plt.scatter(X[targets == i, 0], X[targets == i, 1], s=2, alpha=0.6, label=str(i))
+                plt.title("PCA for latent variable decomposition of " + self.target)
+                plt.tight_layout()
+                plt.savefig(self.model_path + 'latents_PCA.png')
+                if self.model.autoencoder.z_dim == 2:
+                    plt.figure()
+                    for i in zip([0, 1]):
+                        plt.scatter(latents[targets == i, 0], latents[targets == i, 1], s=2, alpha=0.6, label=str(i))
+                    plt.title("Plot for latent variable decomposition of " + self.target)
+                    plt.tight_layout()
+                    plt.savefig(self.model_path + 'latents.png')
+            if self.target == "Y":
+                pca = PCA(n_components=2)
+                # randomly plot 2000 test samples
+                _, ind = train_test_split(range(len(self.pred_mean)), test_size=2000)
+                latents = self.pred_mean[ind].cpu().numpy()
+                targets = self.pred_targets[ind].cpu().numpy().squeeze()
+                X = pca.fit(latents).transform(latents)
+                plt.figure()
+                plt.scatter(X[:, 0], X[:, 1], s=2, alpha=0.6)
+                plt.title("PCA for latent variable decomposition of " + self.target)
+                plt.tight_layout()
+                plt.savefig(self.model_path + 'latents_PCA.png')
+                if self.model.autoencoder.z_dim == 2:
+                    plt.figure()
+                    plt.scatter(latents[:, 0], latents[:, 1], s=2, alpha=0.6)
+                    plt.title("Plot for latent variable decomposition of " + self.target)
+                    plt.tight_layout()
+                    plt.savefig(self.model_path + 'latents.png')
+
+
+        else:
+            pass
+
 
 
                 
