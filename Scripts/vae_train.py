@@ -22,7 +22,7 @@ parser.add_argument('--epochsd', type=int, default=50, help='epochs for D')
 parser.add_argument('--epochsy', type=int, default=75, help='epochs for Y')
 # parser.add_argument('--mlpsize', nargs='+', type=int, help='layers for MLP')
 parser.add_argument('--maxiter', type=int, default=2000, help='max number of iterations for MLP')
-parser.add_argument('--dataset', type=str, default='Simulation', help='dataset to use')
+parser.add_argument('--dataset', type=str, default='NLSY', help='dataset to use')
 
 args = parser.parse_args()
 
@@ -32,7 +32,7 @@ DATASET = args.dataset
 if DATASET == "Simulation":
     X_DIM = 5
 elif DATASET == "NLSY":
-    X_DIM = 18
+    X_DIM = 9
 else:
     raise NotImplementedError
 N_EPOCHS_D = args.epochsd
@@ -76,7 +76,7 @@ def main():
         for i in range(10):
             MLP_SIZE = i_mlp
             MAXITER = args.maxiter
-            # logging.info(f"MLP size: {MLP_SIZE} | max iter: {MAXITER}")
+            logging.info(f"MLP size: {MLP_SIZE} | max iter: {MAXITER}")
             n_samples_a = len(mean_a_Y)
             n_samples_b = len(mean_b_Y)
             a_train, a_test = train_test_split(range(n_samples_a), test_size=0.5)
