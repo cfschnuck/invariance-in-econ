@@ -16,12 +16,22 @@ from MODEL.predictors import InvarPredictor
 from MODEL.trainers import AdvTrainer
 from MODEL.disentanglers import Disentangler
 
-N_E1 = 3
-N_E2 = 5
-N_EPOCHS = 400
+parser = argparse.ArgumentParser()
+parser.add_argument('--ne1', type=int, default=3, help='dimension e1')
+parser.add_argument('--ne2', type=int, default=5, help='dimension e2')
+parser.add_argument('--epochsd', type=int, default=300, help='epochs for D')
+parser.add_argument('--epochsy', type=int, default=400, help='epochs for Y')
+parser.add_argument('--dataset', type=str, default='Simulation', help='dataset to use')
+
+args = parser.parse_args()
+
+N_E1 = args.ne1
+N_E2 = args.ne2
+N_EPOCHS_D = args.epochsd
+N_EPOCHS_Y = args.epochsy
 IN_DIM = 1
 OUT_DIM = 5
-DATASET = "NLSY"
+DATASET = args.dataset
 
 def main():
     # autoencoder = LinearAutoencoder(19, N_E1, N_E2)
@@ -32,13 +42,13 @@ def main():
     #m2 = InvarSennM2(disentangler1, disentangler2)
     # train ML model and predict
     trainer_a_D = AdvTrainer(InvarSennM1(LinearAutoencoder(IN_DIM, N_E1, N_E2, OUT_DIM), InvarPredictor(N_E1)), InvarSennM2(Disentangler(N_E1, N_E2), Disentangler(N_E2, N_E1)), target="D", ab_index="a", dataset="Simulation")
-    trainer_a_D.train(int(N_EPOCHS / 2))
+    trainer_a_D.train(int(N_EPOCHS_D))
     trainer_a_Y = AdvTrainer(InvarSennM1(LinearAutoencoder(IN_DIM, N_E1, N_E2, OUT_DIM), InvarPredictor(N_E1)), InvarSennM2(Disentangler(N_E1, N_E2), Disentangler(N_E2, N_E1)), target="Y", ab_index="a", dataset="Simulation")
-    trainer_a_Y.train(N_EPOCHS)
+    trainer_a_Y.train(N_EPOCHS_Y)
     trainer_b_D = AdvTrainer(InvarSennM1(LinearAutoencoder(IN_DIM, N_E1, N_E2, OUT_DIM), InvarPredictor(N_E1)), InvarSennM2(Disentangler(N_E1, N_E2), Disentangler(N_E2, N_E1)), target="D", ab_index="b", dataset="Simulation")
-    trainer_b_D.train(int(N_EPOCHS / 2))
+    trainer_b_D.train(int(N_EPOCHS_D))
     trainer_b_Y = AdvTrainer(InvarSennM1(LinearAutoencoder(IN_DIM, N_E1, N_E2, OUT_DIM), InvarPredictor(N_E1)), InvarSennM2(Disentangler(N_E1, N_E2), Disentangler(N_E2, N_E1)), target="Y", ab_index="b", dataset="Simulation")
-    trainer_b_Y.train(N_EPOCHS)
+    trainer_b_Y.train(N_EPOCHS_Y)
 
 
     # predict D and Y from ML model but switch data sets

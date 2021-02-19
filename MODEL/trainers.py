@@ -293,10 +293,10 @@ class VAETrainer():
         self.eval_dict = {"train reconstruction loss" : [], "train prior loss" : [], "train paired gkl loss" : [], "test reconstruction loss" : []}
 
     def _update_eval(self):
-        self.eval_dict["train reconstruction loss"].append(self.reconstruction_loss_meter.mean)
-        self.eval_dict["train prior loss"].append(self.prior_loss_meter.mean)
-        self.eval_dict["train paired gkl loss"].append(self.kl_qzx_qz_loss_meter.mean)
-        self.eval_dict["test reconstruction loss"].append(self.reconstruction_loss_meter.mean)
+        self.eval_dict["train reconstruction loss"].append(self.reconstruction_loss_meter.mean * (1 + self.lambda_reg))
+        self.eval_dict["train prior loss"].append(self.prior_loss_meter.mean * self.beta_reg)
+        self.eval_dict["train paired gkl loss"].append(self.kl_qzx_qz_loss_meter.mean * self.lambda_reg * 10)
+        self.eval_dict["test reconstruction loss"].append(self.reconstruction_loss_meter_val.mean)
 
     def _save_eval(self):
         if not os.path.exists(self.model_path):
@@ -322,7 +322,7 @@ class VAETrainer():
                 reconstruction_loss = self.reconstruction_loss(targets_reconstructed, self.targets)
                 prior_loss = self.prior_loss(z_mean, z_log_var)
                 kl_qzx_qz_loss = self.kl_qzx_qz_loss(z_mean, z_log_var)
-                total_loss = (1 + self.lambda_reg) * reconstruction_loss + self.beta_reg * prior_loss + self.lambda_reg * kl_qzx_qz_loss
+                total_loss = (1 + self.lambda_reg) * reconstruction_loss + self.beta_reg * prior_loss + self.lambda_reg * 10 * kl_qzx_qz_loss # TODO
                 total_loss.backward()
                 self.optimizer.step()
                 self.reconstruction_loss_meter.add(reconstruction_loss.item())
@@ -369,7 +369,6 @@ class VAETrainer():
         self.model.eval()
         with torch.no_grad():
             self.pred_mean, _, _ = self.model(self.pred_targets, self.pred_X)
-            # how do we handle x factors here?
         # self.pred_acc = self.accuracy(self.pred, self.pred_targets)
 
     def save_loss_img(self):
@@ -379,7 +378,16 @@ class VAETrainer():
         ax.plot(x, self.eval_dict["test reconstruction loss"], label="test accuracy")
         handles, labels = ax.get_legend_handles_labels()
         ax.legend(handles, labels)
-        plt.savefig(self.model_path + 'training_loss.png')
+        plt.savefig(self.model_path + 'reconstruction_loss.png')
+
+        x = range(len(self.eval_dict["train reconstruction loss"]))
+        fig, ax = plt.subplots()
+        ax.plot(x, self.eval_dict["train reconstruction loss"], label="accuracy")
+        ax.plot(x, self.eval_dict["train prior loss"], label="prior loss")
+        ax.plot(x, self.eval_dict["train paired gkl loss"], label="paired gkl loss")
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(handles, labels)
+        plt.savefig(self.model_path + 'train_total_loss.png')
 
 
                 

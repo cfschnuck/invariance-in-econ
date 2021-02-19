@@ -7,7 +7,8 @@ def sample_from_latent(size_1, size_2):
     return u.sample(size_1), u.sample(size_2)
 
 def prior_loss_f(z_mean, z_log_var):
-    return (-0.5) * torch.sum(1 + z_log_var - z_mean ** 2 - torch.exp(z_log_var))
+    loss = (-0.5) * (1 + z_log_var - z_mean ** 2 - torch.exp(z_log_var)).mean(dim=0)
+    return loss.sum()
 
 # from https://github.com/dcmoyer/invariance-tutorial/blob/master/src/kl_tools.py
 def kl_qzx_qz_loss_f(z_mean, z_log_var):

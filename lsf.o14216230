@@ -1,0 +1,37 @@
+Sender: LSF System <lsfadmin@lo-s4-071>
+Subject: Job 14216230: <python ./Scripts/vae_train.py --mlpsize 20 10> in cluster <leonhard> Exited
+
+Job <python ./Scripts/vae_train.py --mlpsize 20 10> was submitted from host <lo-login-02> by user <cschnuck> in cluster <leonhard> at Thu Feb 18 17:10:50 2021
+Job was executed on host(s) <lo-s4-071>, in queue <gpu.4h>, as user <cschnuck> in cluster <leonhard> at Thu Feb 18 17:15:13 2021
+</cluster/home/cschnuck> was used as the home directory.
+</cluster/home/cschnuck/InvariancesInEcon/invariance-in-econ> was used as the working directory.
+Started at Thu Feb 18 17:15:13 2021
+Terminated at Thu Feb 18 17:15:18 2021
+Results reported at Thu Feb 18 17:15:18 2021
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+python ./Scripts/vae_train.py --mlpsize 20 10
+------------------------------------------------------------
+
+TERM_RUNLIMIT: job killed after reaching LSF run time limit.
+Exited with exit code 140.
+
+Resource usage summary:
+
+    CPU time :                                   2.01 sec.
+    Max Memory :                                 570 MB
+    Average Memory :                             570.00 MB
+    Total Requested Memory :                     8092.00 MB
+    Delta Memory :                               7522.00 MB
+    Max Swap :                                   -
+    Max Processes :                              3
+    Max Threads :                                8
+    Run time :                                   24 sec.
+    Turnaround time :                            268 sec.
+
+The output (if any) follows:
+
+User defined signal 2

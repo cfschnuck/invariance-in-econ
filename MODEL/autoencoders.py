@@ -121,9 +121,9 @@ class VAELinearAutoencoder(nn.Module):
         decoded = self.decoder(torch.cat((sample, x), axis=-1))
         return mean, log_var, decoded
         
-    def encode(self, target):
-        z = self.encoder(target)
-        return z
+    # def encode(self, target):
+    #     z = self.encoder(target)
+    #     return z
     
     # def decode(self, z):
     #     x = self.decoder(z)

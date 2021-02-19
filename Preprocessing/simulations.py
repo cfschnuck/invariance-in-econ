@@ -21,7 +21,7 @@ d_x = x_factors[:,0]**2 - 4 * x_factors[:,1] - x_factors[:,2] - x_factors[:,3]**
 
 d = d_x + d_f
 d = (d - torch.mean(d)) / torch.std(d)
-d = 0.0 if d > 0 else 1.0
+d = (torch.sign(d) + 1) / 2
 
 y_x = 3 * x_factors[:,1] + (x_factors[:,2])**2 - torch.log(x_factors[:,0] + 5)
 

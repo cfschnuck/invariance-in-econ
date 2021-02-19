@@ -1,0 +1,39 @@
+Sender: LSF System <lsfadmin@lo-s4-034>
+Subject: Job 14265812: <python ./Scripts/vae_train.py --epochsd 200 --epochsy 300 --lambdareg 1 --betareg 10 --zdim 2> in cluster <leonhard> Exited
+
+Job <python ./Scripts/vae_train.py --epochsd 200 --epochsy 300 --lambdareg 1 --betareg 10 --zdim 2> was submitted from host <lo-login-02> by user <cschnuck> in cluster <leonhard> at Fri Feb 19 08:50:52 2021
+Job was executed on host(s) <lo-s4-034>, in queue <gpu.4h>, as user <cschnuck> in cluster <leonhard> at Fri Feb 19 08:50:57 2021
+</cluster/home/cschnuck> was used as the home directory.
+</cluster/home/cschnuck/InvariancesInEcon/invariance-in-econ> was used as the working directory.
+Started at Fri Feb 19 08:50:57 2021
+Terminated at Fri Feb 19 08:51:02 2021
+Results reported at Fri Feb 19 08:51:02 2021
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+python ./Scripts/vae_train.py --epochsd 200 --epochsy 300 --lambdareg 1 --betareg 10 --zdim 2
+------------------------------------------------------------
+
+Exited with exit code 1.
+
+Resource usage summary:
+
+    CPU time :                                   0.20 sec.
+    Max Memory :                                 6 MB
+    Average Memory :                             1.00 MB
+    Total Requested Memory :                     8092.00 MB
+    Delta Memory :                               8086.00 MB
+    Max Swap :                                   -
+    Max Processes :                              1
+    Max Threads :                                1
+    Run time :                                   29 sec.
+    Turnaround time :                            10 sec.
+
+The output (if any) follows:
+
+  File "./Scripts/vae_train.py", line 79
+    logging.info(f"MLP size: {MLP_SIZE} | max iter: {MAXITER}")
+                                                             ^
+SyntaxError: invalid syntax
