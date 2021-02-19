@@ -16,7 +16,7 @@ Y = df['ln_wage']
 df.drop('ln_wage', axis='columns', inplace=True)
 D = df['union']
 df.drop('union', axis='columns', inplace=True)
-X = dfdf[['age', 'year', 'race', 'msp','collgrad', 'nev_mar', 'grade', 'not_smsa', 'south' ]]
+X = df[['age', 'year', 'race', 'msp','collgrad', 'nev_mar', 'grade', 'not_smsa', 'south' ]]
 
 # convert to pytorch tensor#
 Y = torch.tensor(Y.values.astype(np.float32)).unsqueeze(-1)
