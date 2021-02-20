@@ -22,7 +22,7 @@ parser.add_argument('--epochsd', type=int, default=50, help='epochs for D')
 parser.add_argument('--epochsy', type=int, default=75, help='epochs for Y')
 # parser.add_argument('--mlpsize', nargs='+', type=int, help='layers for MLP')
 parser.add_argument('--maxiter', type=int, default=2000, help='max number of iterations for MLP')
-parser.add_argument('--dataset', type=str, default='NLSY', help='dataset to use')
+parser.add_argument('--dataset', type=str, default='Simulation', help='dataset to use')
 
 args = parser.parse_args()
 
@@ -62,44 +62,38 @@ def main():
     mean_b_Y, targets_b_D = trainer_a_Y.pred_mean.cpu().numpy(), trainer_a_D.pred_targets.cpu().numpy().ravel()
     mean_a_D, targets_a_Y = trainer_b_D.pred_mean.cpu().numpy(), trainer_b_Y.pred_targets.cpu().numpy().ravel()
     mean_a_Y, targets_a_D = trainer_b_Y.pred_mean.cpu().numpy(), trainer_b_D.pred_targets.cpu().numpy().ravel()
-    #logging.info(mean_b_D, targets_b_Y)
-    #logging.info(mean_b_Y, targets_b_D)
-    #logging.info(mean_a_D, targets_a_Y)
-    #logging.info(mean_a_Y, targets_a_D)
-    print(mean_b_D, targets_b_Y)
-    print(mean_b_Y, targets_b_D)
-    print(mean_a_D, targets_a_Y)
-    print(mean_a_Y, targets_a_D)
     
-    mlp_size_list = [(20, 10), (50,30), (100, 50), (100, 100, 50)]
-    for i_mlp in mlp_size_list:
-        for i in range(10):
-            MLP_SIZE = i_mlp
-            MAXITER = args.maxiter
-            logging.info(f"MLP size: {MLP_SIZE} | max iter: {MAXITER}")
-            n_samples_a = len(mean_a_Y)
-            n_samples_b = len(mean_b_Y)
-            a_train, a_test = train_test_split(range(n_samples_a), test_size=0.5)
-            b_train, b_test = train_test_split(range(n_samples_b), test_size=0.5)
-            mlp_b_D = MLPClassifier(MLP_SIZE, max_iter=MAXITER, early_stopping=True).fit(mean_b_D[b_train], targets_b_D[b_train])
-            mlp_b_Y = MLPRegressor(MLP_SIZE, max_iter=MAXITER, early_stopping=True).fit(mean_b_Y[b_train], targets_b_Y[b_train])
-            mlp_a_D = MLPClassifier(MLP_SIZE, max_iter=MAXITER, early_stopping=True).fit(mean_a_D[a_train], targets_a_D[a_train])
-            mlp_a_Y = MLPRegressor(MLP_SIZE, max_iter=MAXITER, early_stopping=True).fit(mean_a_Y[a_train], targets_a_Y[a_train])
+    # setting parameters for prediction with MLP
+    MLP_SIZE = (100, 50)
+    MAXITER = args.maxiter
+    logging.info(f"MLP size: {MLP_SIZE} | max iter: {MAXITER}")
 
+    total_count = 0
+    convergence_count = 0
+    coef_list_ivae = []
 
-            logging.info(f"train scores: {mlp_a_D.score(mean_a_D[a_train], targets_a_D[a_train])} | {mlp_b_D.score(mean_b_D[b_train], targets_b_D[b_train])}  | {mlp_a_Y.score(mean_a_Y[a_train], targets_a_Y[a_train])} | {mlp_b_Y.score(mean_b_Y[b_train], targets_b_Y[b_train])} test scores: {mlp_a_D.score(mean_a_D[a_test], targets_a_D[a_test])} | {mlp_b_D.score(mean_b_D[b_test], targets_b_D[b_test])} | {mlp_a_Y.score(mean_a_Y[a_test], targets_a_Y[a_test])} | {mlp_b_Y.score(mean_b_Y[b_test], targets_b_Y[b_test])}")
+    # predict Y and D from Ytilde and Dtilde until 10 times prediction was succesfull (MLP converged)
+    while total_count <= 100 and convergence_count <= 10:
+        logging.info(f"iteration: {total_count}")
+        n_samples_a = len(mean_a_Y)
+        n_samples_b = len(mean_b_Y)
+        a_train, a_test = train_test_split(range(n_samples_a), test_size=0.5)
+        b_train, b_test = train_test_split(range(n_samples_b), test_size=0.5)
+        mlp_b_D = MLPClassifier(MLP_SIZE, max_iter=MAXITER, early_stopping=True).fit(mean_b_D[b_train], targets_b_D[b_train])
+        mlp_b_Y = MLPRegressor(MLP_SIZE, max_iter=MAXITER, early_stopping=True).fit(mean_b_Y[b_train], targets_b_Y[b_train])
+        mlp_a_D = MLPClassifier(MLP_SIZE, max_iter=MAXITER, early_stopping=True).fit(mean_a_D[a_train], targets_a_D[a_train])
+        mlp_a_Y = MLPRegressor(MLP_SIZE, max_iter=MAXITER, early_stopping=True).fit(mean_a_Y[a_train], targets_a_Y[a_train])
+
+        converged = mlp_a_D.score(mean_a_D[a_train], targets_a_D[a_train]) >= 0.9 and mlp_b_D.score(mean_b_D[b_train], targets_b_D[b_train]) >= 0.9 and mlp_a_Y.score(mean_a_Y[a_train], targets_a_Y[a_train]) >= 0.9 and mlp_b_Y.score(mean_b_Y[b_train], targets_b_Y[b_train]) >= 0.9
+
+        if converged:
+            logging.info(f"MLP test scores: {mlp_a_D.score(mean_a_D[a_test], targets_a_D[a_test])} | {mlp_b_D.score(mean_b_D[b_test], targets_b_D[b_test])} | {mlp_a_Y.score(mean_a_Y[a_test], targets_a_Y[a_test])} | {mlp_b_Y.score(mean_b_Y[b_test], targets_b_Y[b_test])}")
 
             # regression with probability predictions
             mlp_b_D_pred = mlp_b_D.predict_proba(mean_b_D[b_test])[:,1]
             mlp_b_Y_pred = mlp_b_Y.predict(mean_b_Y[b_test])
             mlp_a_D_pred = mlp_a_D.predict_proba(mean_a_D[a_test])[:,1]
             mlp_a_Y_pred = mlp_a_Y.predict(mean_a_Y[a_test])
-            print("proba preds")
-            print(mlp_b_D_pred)
-            print(mlp_b_Y_pred)
-            print(mlp_a_D_pred)
-            print(mlp_a_Y_pred)
-
 
             reg_a = LinearRegression().fit(mlp_a_D_pred.reshape(-1, 1), mlp_a_Y_pred.reshape(-1, 1))
             reg_b = LinearRegression().fit(mlp_b_D_pred.reshape(-1, 1), mlp_b_Y_pred.reshape(-1, 1))
@@ -112,12 +106,6 @@ def main():
             mlp_b_Y_pred = mlp_b_Y.predict(mean_b_Y[b_test])
             mlp_a_D_pred = mlp_a_D.predict(mean_a_D[a_test])
             mlp_a_Y_pred = mlp_a_Y.predict(mean_a_Y[a_test])
-            print("class preds")
-            print(mlp_b_D_pred)
-            print(mlp_b_Y_pred)
-            print(mlp_a_D_pred)
-            print(mlp_a_Y_pred)
-
 
             reg_a = LinearRegression().fit(mlp_a_D_pred.reshape(-1, 1), mlp_a_Y_pred.reshape(-1, 1))
             reg_b = LinearRegression().fit(mlp_b_D_pred.reshape(-1, 1), mlp_b_Y_pred.reshape(-1, 1))
@@ -125,12 +113,31 @@ def main():
             logging.info(f"class regression coefficients: A {reg_b.coef_} | B {reg_a.coef_}")
             logging.info(f"class regression score: A {reg_b.score(mlp_a_D_pred.reshape(-1, 1), mlp_a_Y_pred.reshape(-1, 1))} | B {reg_a.score(mlp_b_D_pred.reshape(-1, 1), mlp_b_Y_pred.reshape(-1, 1))}")
 
+            coef_list_ivae.append((reg_b.coef_ + reg_a.coef_) / 2)
+
+            convergence_count += 1
+        
+        # log coefficients for IVAE
+        if convergence_count > 10 or total_count > 100:
+            logging.info(f"final coefficients IVAE:")
+            for i in range(len(coef_list_ivae)):
+                logging.info(f"{coef_list_ivae[i]}")
+
+            # log coefficients for IVAE
             # biased regression for comparison
             reg_a_biased = LinearRegression().fit(targets_a_D.reshape(-1, 1), targets_a_Y.reshape(-1, 1))
             reg_b_biased = LinearRegression().fit(targets_b_D.reshape(-1, 1), targets_b_Y.reshape(-1, 1))
             logging.info(f"regression coefficients: A {reg_b_biased.coef_} | B {reg_a_biased.coef_}")
             logging.info(f"regression score: A {reg_b_biased.score(targets_a_D.reshape(-1, 1), targets_a_Y.reshape(-1, 1))} | B {reg_a_biased.score(targets_b_D.reshape(-1, 1), targets_b_Y.reshape(-1, 1))}")
-            
+            logging.info(f"Coefficient from OLS: {(reg_b_biased.coef_ + reg_a_biased.coef_) / 2}")
+
+
+        total_count += 1
+        if total_count == 100:
+            logging.info(f"WARNING: not converged after 100 iterations")
+        
+        
+
 
 if __name__ == "__main__":
     main()
