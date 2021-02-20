@@ -32,3 +32,12 @@ class InvarSennM2(nn.Module):
 #         pred, (e1, e2), x_reconstructed = m1(x)
 #         e1_reconstructed, e2_reconstructed = m2(e1, e2)
 #         return (pred, (e1, e2), x_reconstructed), (e1_reconstructed, e2_reconstructed)
+
+class VAEModel(nn.Module):
+    def __init__(self, autoencoder):
+        super(VAEModel, self).__init__()
+        self.autoencoder = autoencoder
+
+    def forward(self, targets, x = None):
+        z_mean, z_log_var, target_reconstructed = self.autoencoder(targets, x)
+        return z_mean, z_log_var, target_reconstructed
