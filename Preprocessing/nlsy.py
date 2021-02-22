@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import torch
+import matplotlib.pyplot as plt
 
 from helper_functions_preprocessing import save_train_test_data
 
@@ -22,6 +23,15 @@ X = df[['age', 'year', 'race', 'msp','collgrad', 'nev_mar', 'grade', 'not_smsa',
 Y = torch.tensor(Y.values.astype(np.float32)).unsqueeze(-1)
 D = torch.tensor(D.values.astype(np.float32)).unsqueeze(-1)
 X = torch.tensor(X.values.astype(np.float32))
+
+plt.figure()
+plt.scatter(D, Y, s=2, alpha=0.6)
+plt.xlim(-0.5, 1.5)
+plt.title("Log wage Y on union status D")
+plt.ylabel("Log wage Y")
+plt.xlabel("Union status D")
+plt.tight_layout()
+plt.savefig(PATH + 'DY_scatter.png')
 
 save_train_test_data(Y, D, X, PATH, RANDOM_STATE)
 
