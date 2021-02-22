@@ -23,9 +23,9 @@ pip install -r requirements.txt
 ## Reproduction of results
 ```bash
 ## Simulated dataset
-python Scripts/vae_train.py --epochsd 200 --epochsy 300 --dataset Simulation
+python Scripts/vae_train.py --epochsd 150 --epochsy 250 --dataset Simulation
 ## NLSY dataset
-python Scripts/vae_train.py --epochsd 200 --epochsy 300 --dataset NLSY
+python Scripts/vae_train.py --epochsd 150 --epochsy 200 --dataset NLSY
 ```
 
 
