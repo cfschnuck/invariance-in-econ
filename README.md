@@ -1,7 +1,7 @@
 # RBJ Course Project 2020: Adjusting for Confounders with Invariant Representation Learning
 
 ## Introduction
-This repository contains the code for reproducing the results of the course project in the 2020 Building a Robot Judge class at ETH Zurich. This project is mainly based on the paper ["Invariant Representations without Adversarial Training"](https://arxiv.org/abs/1805.09458). The project report can be found [here](RBJ_Project_Report.pdf).
+This repository contains the code for reproducing the results of the course project in the 2020 Building a Robot Judge class at ETH Zurich. This project is mainly based on the paper ["Invariant Representations without Adversarial Training"](https://arxiv.org/abs/1805.09458). The project report can be found [here](RBJ_Final_Report.pdf).
 
 ## Installing dependencies
 ```bash
